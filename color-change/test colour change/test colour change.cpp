@@ -6,8 +6,59 @@
 #include <highlevelmonitorconfigurationapi.h>
 #include <physicalmonitorenumerationapi.h>
 #include <bitset>
+#include <string>
 
 #pragma comment(lib, "Dxva2.lib")
+
+
+// MMC = min max current
+struct MMC {
+
+	DWORD min;
+	DWORD max;
+	DWORD cur;
+
+	std::string toString() {
+		return "(min = " + std::to_string(min) + ", cur = " + std::to_string(cur) + ", max = " + std::to_string(max) + ")";
+	}
+};
+
+struct MonitorRBG {
+	MMC red;
+	MMC green;
+	MMC blue;
+
+	std::string toString() {
+		return "(" + std::to_string(red.cur) + "," + std::to_string(green.cur) + "," + std::to_string(blue.cur) + ")";
+	}
+};
+
+struct RBG {
+
+	DWORD r;
+	DWORD g;
+	DWORD b;
+};
+
+MonitorRBG GetMonitorRBGGain(HANDLE handle) {
+
+	MonitorRBG out = {};
+
+	DWORD n = 0;
+	
+	GetMonitorRedGreenOrBlueGain(handle, MC_RED_GAIN, &out.red.min, &out.red.cur, &out.red.max);
+	GetMonitorRedGreenOrBlueGain(handle, MC_GREEN_GAIN, &out.green.min, &out.green.cur, &out.green.max);
+	GetMonitorRedGreenOrBlueGain(handle, MC_BLUE_GAIN, &out.blue.min, &out.blue.cur, &out.blue.max);
+
+	return out;
+}
+
+void SetMonitorRBGGain(HANDLE handle, RBG newValues) {
+
+	SetMonitorRedGreenOrBlueGain(handle, MC_RED_GAIN, newValues.r);
+	SetMonitorRedGreenOrBlueGain(handle, MC_RED_GAIN, newValues.g);
+	SetMonitorRedGreenOrBlueGain(handle, MC_RED_GAIN, newValues.b);
+}
 
 int main()
 {
@@ -16,9 +67,6 @@ int main()
 	DWORD minb = 0;
 	DWORD maxb = 0;
 	DWORD numMonitors;
-
-	DWORD monitorCapabilites;
-	DWORD supportColourTemps;
 
 	MC_COLOR_TEMPERATURE curTemp;
 
@@ -36,19 +84,46 @@ int main()
 
 			HANDLE working = physicalMonitors[0].hPhysicalMonitor;
 
+			#pragma region check support
+
+			DWORD monitorCapabilites;
+			DWORD supportColourTemps;
+			GetMonitorCapabilities(working, &monitorCapabilites, &supportColourTemps);
+
+			std::cout << "Supports Nothing: " << bool(monitorCapabilites & MC_CAPS_NONE) << std::endl;
+			std::cout << "Supports RGB Drive: " << bool(monitorCapabilites & MC_CAPS_RED_GREEN_BLUE_DRIVE) << std::endl;
+			std::cout << "Supports RGB Gain: " << bool(monitorCapabilites & MC_CAPS_RED_GREEN_BLUE_GAIN) << std::endl;
+			std::cout << "Supports Colour Tempature: " << bool(monitorCapabilites & MC_CAPS_COLOR_TEMPERATURE) << std::endl;
+			std::cout << "Supports Brightness: " << bool(monitorCapabilites & MC_CAPS_BRIGHTNESS) << std::endl;
+			std::cout << "Supports Contrast: " << bool(monitorCapabilites & MC_CAPS_CONTRAST) << std::endl;
+
+			#pragma endregion
+
+
 			#pragma region use mointors
 
-			GetMonitorCapabilities(working, &monitorCapabilites, &supportColourTemps);
-			std::cout << std::bitset<13>(monitorCapabilites).to_string() << "\n";
-			std::cout << std::bitset<9>(supportColourTemps).to_string() << "\n";
+			/*MonitorRBG monitorRBG = GetMonitorRBG(working);
+
+			std::cout << "RGB: " << monitorRBG.toString() << std::endl;
+
+			Sleep(3000);
+			SetMonitorRBG(working, RBG{ 10, 5, 5 });
+
+			MonitorRBG newRBG = GetMonitorRBG(working);
+			std::cout << "RGB: " << newRBG.toString() << std::endl;
+
+			Sleep(3000);
+			SetMonitorRBG(working, RBG{ 5, 5, 5 });*/
+
+			//std::cout << std::bitset<13>(monitorCapabilites).to_string() << "\n";
+			//std::cout << std::bitset<9>(supportColourTemps).to_string() << "\n";
 
 			//GetMonitorBrightness(working, &minb, &cb, &maxb);
-			GetMonitorColorTemperature(working, &curTemp);
-			std::cout << "Tempature: " << curTemp;
+			//GetMonitorColorTemperature(working, &curTemp);
+			//std::cout << "Tempature: " << curTemp;
 			//SetMonitorColorTemperature(working, MC_COLOR_TEMPERATURE_10000K);
 
 			//SetMonitorBrightness(working, 25);
-			//Sleep(3000);
 			//SetMonitorBrightness(working, 75);
 			//SetMonitorColorTemperature(working, curTemp);
 
